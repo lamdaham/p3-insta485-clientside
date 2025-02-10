@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Stop on errors and print each command as it is executed.
+set -ex
+
+# Run pycodestyle on the insta485 package.
+pycodestyle insta485
+
+# Run pydocstyle on the insta485 package.
+pydocstyle insta485
+
+# Run pylint on the insta485 package.
+pylint insta485
+
+# Run all unit tests with verbose output.
+pytest -v tests

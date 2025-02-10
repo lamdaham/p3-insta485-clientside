@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{{ username }} Explore Page</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="/">logoSymbol</a> | <a href="/explore/">Explore</a> |
+        <a href="/users/{{ logged_in_user }}/">{{ logged_in_user }}</a>
+      </nav>
+      <hr />
+    </header>
+    <p>Followers</p>
+    <section>
+      {% for follower in followers %}
+      <div class="follower">
+        <img
+          src="{{ url_for('serve_uploaded_file', filename=follower['profile_pic']) }}"
+          alt="{{ follower['username'] }}'s icon"
+          class="icon"
+        />
+        <a href="/users/{{ follower['username'] }}/"
+          >{{ follower['username'] }}</a
+        >
+        {% if follower['username'] != logged_in_user %}
+        <p>{{ follower.relationship }}</p>
+        {% else %}
+        <p></p>
+        {% endif %} {% if follower.relationship == "following" %}
+        <form
+          action="/following/?target={{ request.path }}"
+          method="post"
+          enctype="multipart/form-data"
+        >
+          <input type="submit" name="unfollow" value="Unfollow" />
+          <input
+            type="hidden"
+            name="username"
+            value="{{ follower['username'] }}"
+          />
+          <input type="hidden" name="operation" value="unfollow" />
+        </form>
+        {% elif follower.relationship == "not following" %}
+        <form
+          action="/following/?target={{ request.path }}"
+          method="post"
+          enctype="multipart/form-data"
+        >
+          <input type="submit" name="follow" value="Follow" />
+          <input
+            type="hidden"
+            name="username"
+            value="{{ follower['username'] }}"
+          />
+          <input type="hidden" name="operation" value="follow" />
+        </form>
+        {% endif %}
+      </div>
+      {% else %}
+      <p>No followers yet.</p>
+      {% endfor %}
+    </section>
+  </body>
+</html>

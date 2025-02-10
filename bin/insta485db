@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+#
+# insta485db: Manage the insta485 database and uploads directory.
+# Usage: ./bin/insta485db (create|destroy|reset|dump|random)
+#
+
+# "Strict" mode: stop on errors, undefined vars, and pipeline failures.
+set -Eeuo pipefail
+
+DB_FILE="var/insta485.sqlite3"
+UPLOADS_DIR="var/uploads"
+SCHEMA_SQL="sql/schema.sql"
+DATA_SQL="sql/data.sql"
+UPLOADS_SRC="sql/uploads"
+
+usage() {
+  echo "Usage: $0 (create|destroy|reset|dump|random)"
+}
+
+if [ $# -ne 1 ]; then
+  usage
+  exit 1
+fi
+
+CMD="$1"
+
+create_db() {
+  if [ -f "$DB_FILE" ]; then
+    echo "Error: database already exists"
+    exit 1
+  fi
+
+  echo "+ mkdir -p $UPLOADS_DIR"
+  mkdir -p "$UPLOADS_DIR"
+
+  echo "+ sqlite3 $DB_FILE < $SCHEMA_SQL"
+  sqlite3 "$DB_FILE" < "$SCHEMA_SQL"
+
+  echo "+ sqlite3 $DB_FILE < $DATA_SQL"
+  sqlite3 "$DB_FILE" < "$DATA_SQL"
+
+  echo "+ cp $UPLOADS_SRC/* $UPLOADS_DIR/"
+  cp "$UPLOADS_SRC"/* "$UPLOADS_DIR"/
+}
+
+destroy_db() {
+  echo "+ rm -rf $DB_FILE $UPLOADS_DIR"
+  rm -rf "$DB_FILE" "$UPLOADS_DIR"
+}
+
+reset_db() {
+  destroy_db
+  create_db
+}
+
+dump_db() {
+  echo "+ sqlite3 -batch -line $DB_FILE 'SELECT * FROM comments'"
+  sqlite3 -batch -line "$DB_FILE" "SELECT * FROM comments"
+
+  echo
+  echo "+ sqlite3 -batch -line $DB_FILE 'SELECT * FROM following'"
+  sqlite3 -batch -line "$DB_FILE" "SELECT * FROM following"
+
+  echo
+  echo "+ sqlite3 -batch -line $DB_FILE 'SELECT * FROM likes'"
+  sqlite3 -batch -line "$DB_FILE" "SELECT * FROM likes"
+
+  echo
+  echo "+ sqlite3 -batch -line $DB_FILE 'SELECT * FROM posts'"
+  sqlite3 -batch -line "$DB_FILE" "SELECT * FROM posts"
+
+  echo
+  echo "+ sqlite3 -batch -line $DB_FILE 'SELECT * FROM users'"
+  sqlite3 -batch -line "$DB_FILE" "SELECT * FROM users"
+}
+
+random_db() {
+  if ! command -v convert &>/dev/null; then
+    echo "Error: ImageMagick 'convert' is not installed. Please install it."
+    exit 1
+  fi
+
+  if [ ! -d "$UPLOADS_DIR" ]; then
+    echo "Error: uploads directory ($UPLOADS_DIR) does not exist. Run 'create' first."
+    exit 1
+  fi
+
+  echo "Adding 100 random posts with owner 'awdeorio'..."
+  for i in $(seq 1 100); do
+    FILENAME="$(uuidgen).png"
+    NUMS=()
+    for j in $(seq 1 6); do
+      NUMS+=($(($RANDOM % 255)))
+    done
+    convert -size 360x360 \
+      "radial-gradient:rgb(${NUMS[0]},${NUMS[1]},${NUMS[2]})-rgb(${NUMS[3]},${NUMS[4]},${NUMS[5]})" \
+      -pointsize 64 -fill black -gravity center -annotate 0 "image $i" "$UPLOADS_DIR/$FILENAME"
+    OWNER="awdeorio"
+    sqlite3 -echo -batch "$DB_FILE" "INSERT INTO posts(filename, owner) VALUES('${FILENAME}','${OWNER}');"
+  done
+}
+
+case "$CMD" in
+  create)
+    create_db
+    ;;
+  destroy)
+    destroy_db
+    ;;
+  reset)
+    reset_db
+    ;;
+  dump)
+    dump_db
+    ;;
+  random)
+    random_db
+    ;;
+  *)
+    usage
+    exit 1
+    ;;
+esac

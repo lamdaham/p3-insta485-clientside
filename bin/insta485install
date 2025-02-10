@@ -1,0 +1,20 @@
+#!/bin/bash
+# Exit immediately if a command exits with a non-zero status,
+# treat unset variables as an error, and print commands as they are executed.
+set -Eeuo pipefail
+set -x
+
+# Create a Python virtual environment named 'env'
+python3 -m venv env
+
+# Activate the Python virtual environment
+source env/bin/activate
+
+# Install back-end dependencies:
+# 1. Install packages listed in requirements.txt
+# 2. Install the current package in "editable" mode
+pip install -r requirements.txt
+pip install -e .
+
+# Install front-end dependencies using npm
+npm ci .

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{{ fullname }}'s Profile</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="/">logoSymbol</a> | <a href="/explore/">Explore</a> |
+        <a href="/users/{{ logged_in_user }}/">{{ logged_in_user }}</a>
+      </nav>
+      <hr />
+    </header>
+
+    <section>
+      <h2>{{ username }}</h2>
+      {% if logged_in_user == username %}
+      <a href="/accounts/edit/">Edit profile</a>
+      <form
+        action="/accounts/logout/"
+        method="post"
+        enctype="multipart/form-data"
+      >
+        <input type="submit" name="logout" value="Logout" />
+      </form>
+      <form action="/posts/" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" accept="image/*" required />
+        <input type="submit" name="create_post" value="Upload new post" />
+        <input type="hidden" name="operation" value="create" />
+      </form>
+      {% else %} {% if relationship == "following" %}
+      <form
+        action="/following/?target={{ request.path }}"
+        method="post"
+        enctype="multipart/form-data"
+      >
+        <input type="submit" name="unfollow" value="Unfollow" />
+        <input type="hidden" name="username" value="{{ username }}" />
+        <input type="hidden" name="operation" value="unfollow" />
+      </form>
+      {% elif relationship == "not following" %}
+      <form
+        action="/following/?target={{ request.path }}"
+        method="post"
+        enctype="multipart/form-data"
+      >
+        <input type="submit" name="follow" value="Follow" />
+        <input type="hidden" name="username" value="{{ username }}" />
+        <input type="hidden" name="operation" value="follow" />
+      </form>
+      {% endif %} {% endif %}
+
+      <p>{{ num_posts }} {{ "posts" if num_posts != 1 else "post" }}</p>
+      <p>
+        <a href="/users/{{ username }}/followers/">
+          {{ num_followers }} {{ "followers" if num_followers != 1 else
+          "follower" }}
+        </a>
+      </p>
+      <p>
+        <a href="/users/{{ username }}/following/">
+          {{ num_following }} following
+        </a>
+      </p>
+    </section>
+
+    {% if posts %}
+    <section>
+      <h2>Posts</h2>
+      {% for post in posts %}
+      <a href="/posts/{{ post['postid'] }}/">
+        <img
+          src="{{ url_for('serve_uploaded_file', filename=post['filename']) }}"
+          alt="Post image"
+        />
+      </a>
+      {% endfor %}
+    </section>
+    {% else %}
+    <p>No posts yet.</p>
+    {% endif %}
+  </body>
+</html>

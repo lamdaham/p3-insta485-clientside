@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Delete Account</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="/">logoSymbol</a> | <a href="/explore/">Explore</a> |
+        <a href="/users/{{ logged_in_user }}/">{{ logged_in_user }}</a>
+      </nav>
+      <hr />
+    </header>
+
+    <section>
+      <p>{{username}}</p>
+      <form
+        action="/accounts/?target=/"
+        method="post"
+        enctype="multipart/form-data"
+      >
+        <input type="submit" name="delete" value="confirm delete account" />
+        <input type="hidden" name="operation" value="delete" />
+      </form>
+    </section>
+  </body>
+</html>

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+#
+# bin/insta485run
+# Run the Insta485 development server if var/insta485.sqlite3 exists.
+# Otherwise, print an error and exit.
+
+# Exit immediately if a command exits with a non-zero status.
+set -e
+
+DB_PATH="var/insta485.sqlite3"
+
+# Check if the DB file exists.
+if [ ! -f "$DB_PATH" ]; then
+  echo "Error: can't find database $DB_PATH"
+  echo "Try: ./bin/insta485db create"
+  exit 1
+fi
+
+# If the DB exists, run the Flask development server on port 8000.
+echo "+ flask --app insta485 --debug run --host 0.0.0.0 --port 8000"
+flask --app insta485 --debug run --host 0.0.0.0 --port 8000

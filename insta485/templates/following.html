@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Following by {{ username }}</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="/">logoSymbol</a> | <a href="/explore/">Explore</a> |
+        <a href="/users/{{ logged_in_user }}/">{{ logged_in_user }}</a>
+      </nav>
+      <hr />
+    </header>
+
+    <section>
+      {% for followed_user in following %}
+      <div class="followed-user">
+        <img
+          src="{{ url_for('serve_uploaded_file', filename=followed_user['profile_pic']) }}"
+          alt="{{ followed_user['username'] }}'s icon"
+          class="icon"
+        />
+        <a href="/users/{{ followed_user['username'] }}/"
+          >{{ followed_user['username'] }}</a
+        >
+        {% if followed_user['username'] != logged_in_user %}
+        <p>{{ followed_user.relationship }}</p>
+        {% else %}
+        <p></p>
+        {% endif %} {% if followed_user.relationship == "following" %}
+        <form
+          action="/following/?target={{ request.path }}"
+          method="post"
+          enctype="multipart/form-data"
+        >
+          <input type="submit" name="unfollow" value="Unfollow" />
+          <input
+            type="hidden"
+            name="username"
+            value="{{ followed_user['username'] }}"
+          />
+          <input type="hidden" name="operation" value="unfollow" />
+        </form>
+        {% elif followed_user.relationship == "not following" %}
+        <form
+          action="/following/?target={{ request.path }}"
+          method="post"
+          enctype="multipart/form-data"
+        >
+          <input type="submit" name="follow" value="Follow" />
+          <input
+            type="hidden"
+            name="username"
+            value="{{ followed_user['username'] }}"
+          />
+          <input type="hidden" name="operation" value="follow" />
+        </form>
+        {% endif %}
+      </div>
+      {% else %}
+      <p>Not following anyone yet.</p>
+      {% endfor %}
+    </section>
+  </body>
+</html>

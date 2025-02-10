@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Edit Account</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="/">logoSymbol</a> | <a href="/explore/">Explore</a> |
+        <a href="/users/{{ logged_in_user }}/">{{ logged_in_user }}</a>
+      </nav>
+      <hr />
+    </header>
+
+    <section>
+      <div class="user-profile">
+        <img
+          src="{{ url_for('serve_uploaded_file', filename=user['profile_pic']) }}"
+          alt="{{ user['username'] }}'s profile picture"
+        />
+        <p>{{ user.username }}</p>
+      </div>
+
+      <form
+        action="/accounts/?target={{ request.path }}"
+        method="post"
+        enctype="multipart/form-data"
+      >
+        <div class="form-group">
+          <label for="photo">Photo</label>
+          <input type="file" id="photo" name="file" accept="image/*" />
+        </div>
+
+        <div class="form-group">
+          <label for="fullname">Name</label>
+          <input
+            type="text"
+            id="fullname"
+            name="fullname"
+            value="{{ user.fullname }}"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input
+            type="text"
+            id="email"
+            name="email"
+            value="{{ user.email }}"
+            required
+          />
+        </div>
+
+        <input type="submit" name="update" value="submit" />
+        <input type="hidden" name="operation" value="edit_account" />
+      </form>
+
+      <nav>
+        <a href="/accounts/password/">Change Password</a> |
+        <a href="/accounts/delete/">Delete Account</a>
+      </nav>
+    </section>
+  </body>
+</html>
