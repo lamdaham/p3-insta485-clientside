@@ -217,3 +217,88 @@ def get_post_detail(postid):
         "postShowUrl": postShowUrl
     }
     return flask.jsonify(response)
+
+@insta485.app.route('/api/v1/likes/', methods=['POST'])
+def create_like():
+    """Create one “like” for a specific post.
+
+    Returns 201 CREATED if a new like is created.
+    Returns 200 OK if the like already exists.
+    Returns 404 if the post does not exist.
+    """
+    import hashlib
+
+    # Require authentication.
+    auth = flask.request.authorization
+    if auth is None and "username" not in flask.session:
+        return flask.jsonify({}), 403
+
+    # Get username from session or verify credentials.
+    if "username" in flask.session:
+        username = flask.session["username"]
+    else:
+        username = auth.get("username")
+        password = auth.get("password")
+        connection = insta485.model.get_db()
+        user_query = connection.execute(
+            "SELECT * FROM users WHERE username = ?",
+            (username,)
+        ).fetchone()
+        if user_query is None:
+            return flask.jsonify({}), 401
+        password_db_string = user_query["password"]
+        algorithm, salt, hash_val = password_db_string.split("$")
+        hash_obj = hashlib.new(algorithm)
+        hash_obj.update((salt + password).encode("utf-8"))
+        if hash_obj.hexdigest() != hash_val:
+            return flask.jsonify({}), 401
+        flask.session["username"] = username
+
+    connection = insta485.model.get_db()
+
+    # Get postid from the query string.
+    postid = flask.request.args.get("postid", type=int)
+    if postid is None:
+        # If no postid is given, or it is invalid, return a 404.
+        flask.abort(404)
+
+    # Check that the post exists.
+    post = connection.execute(
+        "SELECT postid FROM posts WHERE postid = ?",
+        (postid,)
+    ).fetchone()
+    if post is None:
+        flask.abort(404)
+
+    # Check if a like by this user on this post already exists.
+    like = connection.execute(
+        "SELECT likeid FROM likes WHERE postid = ? AND owner = ?",
+        (postid, username)
+    ).fetchone()
+
+    if like is not None:
+        # The like already exists: return it with a 200 OK.
+        response = {
+            "likeid": like["likeid"],
+            "url": f"/api/v1/likes/{like['likeid']}/"
+        }
+        return flask.jsonify(response), 200
+
+    # Otherwise, create a new like.
+    connection.execute(
+        "INSERT INTO likes (owner, postid) VALUES (?, ?)",
+        (username, postid)
+    )
+    connection.commit()
+
+    # Retrieve the new likeid. (This method works for SQLite.)
+    new_like = connection.execute(
+        "SELECT last_insert_rowid() AS id"
+    ).fetchone()
+    likeid = new_like["id"]
+
+    response = {
+        "likeid": likeid,
+        "url": f"/api/v1/likes/{likeid}/"
+    }
+    return flask.jsonify(response), 201
