@@ -194,7 +194,7 @@ def get_post_detail(postid):
         like_url = f"/api/v1/likes/{like_row['likeid']}/"
     else:
         lognameLikesThis = False
-        like_url = ""
+        like_url = None
 
     likes = {
         "numLikes": numLikes,
@@ -302,3 +302,202 @@ def create_like():
         "url": f"/api/v1/likes/{likeid}/"
     }
     return flask.jsonify(response), 201
+
+@insta485.app.route('/api/v1/likes/<int:likeid>/', methods=['DELETE'])
+def delete_like(likeid):
+    """Delete a like.
+    
+    Returns 204 NO CONTENT on success.
+    Returns 404 if the like does not exist.
+    Returns 403 if the user does not own the like.
+    """
+    # Require authentication
+    auth = flask.request.authorization
+    if auth is None and "username" not in flask.session:
+        return flask.jsonify({}), 403  # ✅ Remove "url": None, use an empty JSON
+
+    # Get username from session or verify credentials
+    if "username" in flask.session:
+        username = flask.session["username"]
+    else:
+        username = auth.get("username")
+        password = auth.get("password")
+        connection = insta485.model.get_db()
+        user_query = connection.execute(
+            "SELECT * FROM users WHERE username = ?",
+            (username,)
+        ).fetchone()
+        if user_query is None:
+            return flask.jsonify({}), 401
+        password_db_string = user_query["password"]
+        algorithm, salt, hash_val = password_db_string.split("$")
+        hash_obj = hashlib.new(algorithm)
+        hash_obj.update((salt + password).encode("utf-8"))
+        if hash_obj.hexdigest() != hash_val:
+            return flask.jsonify({}), 401
+        flask.session["username"] = username
+
+    connection = insta485.model.get_db()
+
+    # Check if the like exists
+    like = connection.execute(
+        "SELECT owner FROM likes WHERE likeid = ?",
+        (likeid,)
+    ).fetchone()
+
+    if like is None:
+        # Like does not exist, return 404
+        flask.abort(404)
+
+    # Check if the user owns the like
+    if like["owner"] != username:
+        # User does not own the like, return 403
+        flask.abort(403)
+
+    # Delete the like
+    connection.execute(
+        "DELETE FROM likes WHERE likeid = ?",
+        (likeid,)
+    )
+    connection.commit()
+
+    return "", 204  # ✅ Ensure no JSON response, only status code 204
+
+@insta485.app.route('/api/v1/comments/', methods=['POST'])
+def add_comment():
+    """Add a comment to a post.
+
+    Returns:
+        201 Created on success.
+        400 Bad Request if comment text is missing.
+        403 Forbidden if user is not authenticated.
+        404 Not Found if postid does not exist.
+    """
+    # Require authentication
+    auth = flask.request.authorization
+    if auth is None and "username" not in flask.session:
+        return flask.jsonify({}), 403
+
+    # Get username from session or verify credentials
+    if "username" in flask.session:
+        username = flask.session["username"]
+    else:
+        username = auth.get("username")
+        password = auth.get("password")
+        connection = insta485.model.get_db()
+        user_query = connection.execute(
+            "SELECT * FROM users WHERE username = ?", (username,)
+        ).fetchone()
+        if user_query is None:
+            return flask.jsonify({}), 401
+        password_db_string = user_query["password"]
+        algorithm, salt, hash_val = password_db_string.split("$")
+        hash_obj = hashlib.new(algorithm)
+        hash_obj.update((salt + password).encode("utf-8"))
+        if hash_obj.hexdigest() != hash_val:
+            return flask.jsonify({}), 401
+        flask.session["username"] = username
+
+    connection = insta485.model.get_db()
+
+    # Get post ID from query parameters
+    postid = flask.request.args.get("postid", type=int)
+    if postid is None:
+        return flask.jsonify({"message": "Missing postid"}), 404
+
+    # Ensure the post exists
+    post = connection.execute(
+        "SELECT postid FROM posts WHERE postid = ?", (postid,)
+    ).fetchone()
+    if post is None:
+        return flask.jsonify({"message": "Post not found"}), 404
+
+    # Get comment text from request JSON
+    comment_json = flask.request.get_json()
+    if not comment_json or "text" not in comment_json:
+        return flask.jsonify({"message": "Missing comment text"}), 400
+    text = comment_json["text"].strip()
+    
+    if not text:
+        return flask.jsonify({"message": "Comment text cannot be empty"}), 400
+
+    # Insert comment into the database
+    connection.execute(
+        "INSERT INTO comments (owner, postid, text) VALUES (?, ?, ?)",
+        (username, postid, text)
+    )
+    connection.commit()
+
+    # Retrieve the new comment ID
+    new_comment = connection.execute("SELECT last_insert_rowid() AS id").fetchone()
+    commentid = new_comment["id"]
+
+    # Construct response
+    response = {
+        "commentid": commentid,
+        "lognameOwnsThis": True,
+        "owner": username,
+        "ownerShowUrl": f"/users/{username}/",
+        "text": text,
+        "url": f"/api/v1/comments/{commentid}/"
+    }
+
+    return flask.jsonify(response), 201
+
+@insta485.app.route('/api/v1/comments/<int:commentid>/', methods=['DELETE'])
+def delete_comment(commentid):
+    """Delete a comment.
+
+    Returns:
+        204 No Content on success.
+        403 Forbidden if user does not own the comment.
+        404 Not Found if comment does not exist.
+    """
+    # Require authentication
+    auth = flask.request.authorization
+    if auth is None and "username" not in flask.session:
+        return flask.jsonify({}), 403
+
+    # Get username from session or verify credentials
+    if "username" in flask.session:
+        username = flask.session["username"]
+    else:
+        username = auth.get("username")
+        password = auth.get("password")
+        connection = insta485.model.get_db()
+        user_query = connection.execute(
+            "SELECT * FROM users WHERE username = ?", (username,)
+        ).fetchone()
+        if user_query is None:
+            return flask.jsonify({}), 401
+        password_db_string = user_query["password"]
+        algorithm, salt, hash_val = password_db_string.split("$")
+        hash_obj = hashlib.new(algorithm)
+        hash_obj.update((salt + password).encode("utf-8"))
+        if hash_obj.hexdigest() != hash_val:
+            return flask.jsonify({}), 401
+        flask.session["username"] = username
+
+    connection = insta485.model.get_db()
+
+    # Check if the comment exists
+    comment = connection.execute(
+        "SELECT owner FROM comments WHERE commentid = ?", (commentid,)
+    ).fetchone()
+
+    if comment is None:
+        # Comment does not exist, return 404
+        flask.abort(404)
+
+    # Check if the user owns the comment
+    if comment["owner"] != username:
+        # User does not own the comment, return 403
+        flask.abort(403)
+
+    # Delete the comment
+    connection.execute(
+        "DELETE FROM comments WHERE commentid = ?", (commentid,)
+    )
+    connection.commit()
+
+    return "", 204  # No content response
