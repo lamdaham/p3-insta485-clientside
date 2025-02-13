@@ -3,6 +3,7 @@ import flask
 import insta485
 import hashlib
 
+
 @insta485.app.route('/api/v1/', methods=['GET'])
 def get_api():
     """Return service metadata."""
@@ -13,6 +14,7 @@ def get_api():
         "url": "/api/v1/"
     }
     return flask.jsonify(**context)
+
 
 @insta485.app.route('/api/v1/posts/', methods=['GET'])
 def get_posts():
@@ -54,15 +56,15 @@ def get_posts():
     if size is None or size <= 0 or page is None or page < 0:
         return flask.jsonify(message="Bad Request", status_code=400), 400
 
-    # If no postid_lte is given, set it to the most recent (i.e. maximum) postid
+    # If no postid_lte is given, set it to the most recent (max) postid
     if postid_lte is None:
         max_post_query = connection.execute(
             """
             SELECT MAX(postid) AS max_postid
             FROM posts
             WHERE (owner = :username OR owner IN (
-                      SELECT username2 FROM following WHERE username1 = :username
-                  ))
+                SELECT username2 FROM following WHERE username1 = :username
+                ))
             """,
             {"username": username}
         ).fetchone()
@@ -218,6 +220,7 @@ def get_post_detail(postid):
     }
     return flask.jsonify(response)
 
+
 @insta485.app.route('/api/v1/likes/', methods=['POST'])
 def create_like():
     """Create one “like” for a specific post.
@@ -303,10 +306,10 @@ def create_like():
     }
     return flask.jsonify(response), 201
 
+
 @insta485.app.route('/api/v1/likes/<int:likeid>/', methods=['DELETE'])
 def delete_like(likeid):
     """Delete a like.
-    
     Returns 204 NO CONTENT on success.
     Returns 404 if the like does not exist.
     Returns 403 if the user does not own the like.
@@ -363,6 +366,7 @@ def delete_like(likeid):
 
     return "", 204  # ✅ Ensure no JSON response, only status code 204
 
+
 @insta485.app.route('/api/v1/comments/', methods=['POST'])
 def add_comment():
     """Add a comment to a post.
@@ -417,7 +421,6 @@ def add_comment():
     if not comment_json or "text" not in comment_json:
         return flask.jsonify({"message": "Missing comment text"}), 400
     text = comment_json["text"].strip()
-    
     if not text:
         return flask.jsonify({"message": "Comment text cannot be empty"}), 400
 
@@ -443,6 +446,7 @@ def add_comment():
     }
 
     return flask.jsonify(response), 201
+
 
 @insta485.app.route('/api/v1/comments/<int:commentid>/', methods=['DELETE'])
 def delete_comment(commentid):
